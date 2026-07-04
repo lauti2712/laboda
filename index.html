@@ -20,6 +20,7 @@
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--fondo); min-height:100vh; font-family:'Cormorant Garamond',Georgia,serif; color:var(--ink); transition:background 0.4s; }
+body.cargando-inicial { visibility:hidden; }
 
 .vista { display:none; min-height:100vh; }
 .vista.activa { display:block; }
@@ -166,7 +167,7 @@ body { background:var(--fondo); min-height:100vh; font-family:'Cormorant Garamon
 }
 </style>
 </head>
-<body>
+<body class="cargando-inicial">
 
 <div class="toast" id="toast"></div>
 
@@ -485,6 +486,7 @@ async function init() {
   } else {
     mostrarVista('invitacion-vista'); mostrarVistaBienvenida();
   }
+  document.body.classList.remove('cargando-inicial');
 }
 
 // LOGIN
