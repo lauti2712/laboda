@@ -476,9 +476,15 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const token = params.get('inv');
   const isAdmin = params.get('admin');
-  if (isAdmin !== null || sessionStorage.getItem('boda_admin')) { mostrarVista('login-vista'); }
-  else if (token) { mostrarVista('invitacion-vista'); cargarInvitacion(token); }
-  else { mostrarVista('invitacion-vista'); mostrarVistaBienvenida(); }
+  if (token) {
+    mostrarVista('invitacion-vista'); cargarInvitacion(token);
+  } else if (isAdmin !== null) {
+    mostrarVista('login-vista');
+  } else if (sessionStorage.getItem('boda_admin')) {
+    mostrarVista('admin-vista'); tabAdmin('invitados');
+  } else {
+    mostrarVista('invitacion-vista'); mostrarVistaBienvenida();
+  }
 }
 
 // LOGIN
