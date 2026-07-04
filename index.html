@@ -219,6 +219,14 @@ body { background:var(--fondo); min-height:100vh; font-family:'Cormorant Garamon
               <input class="campo-input" id="inv-email" placeholder="email@ejemplo.com">
             </div>
             <div class="form-row">
+              <label class="campo-label">Link personalizado (slug)</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:13px;color:var(--ink-dim);white-space:nowrap;">?inv=</span>
+                <input class="campo-input" id="inv-slug" placeholder="ej: agos · barbi · pela-bar" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-')">
+              </div>
+              <div style="font-size:11px;color:var(--ink-dimmer);margin-top:4px;font-style:italic;">Solo letras, números y guiones. Se genera automáticamente si lo dejás vacío.</div>
+            </div>
+            <div class="form-row">
               <label class="campo-label">Cantidad de integrantes</label>
               <select class="campo-input" id="inv-cantidad">
                 <option value="1">1 persona</option>
@@ -512,11 +520,12 @@ async function cargarListaInvitados() {
   const invs = await supa('boda_invitados?select=*&order=created_at.asc');
   if (!invs || !invs.length) { el.innerHTML = '<p style="color:var(--ink-dim);font-style:italic;">Ningún invitado todavía.</p>'; return; }
   el.innerHTML = invs.map(inv => {
-    const link = `${location.origin}${location.pathname}?inv=${inv.token}`;
+    const link = `${location.origin}${location.pathname}?inv=${inv.slug || inv.token}`;
     return `<div class="lista-item">
       <div style="flex:1">
         <div class="lista-item-nombre">${inv.nombre}</div>
         <div class="lista-item-sub">${inv.subtitulo || 'Sin subtítulo personalizado'} · ${inv.cantidad > 1 ? inv.cantidad + ' integrantes' : '1 persona'}</div>
+        <div class="lista-item-sub" style="color:var(--gold);opacity:0.7;">?inv=${inv.slug || inv.token}</div>
         <div class="link-row">
           <div class="link-box">${link}</div>
           <button class="btn-outline btn-sm" onclick="copiarLink('${link}')">Copiar link</button>
@@ -537,24 +546,35 @@ function editarInvitado(inv) {
   document.getElementById('inv-subtitulo').value = inv.subtitulo || '';
   document.getElementById('inv-intro').value = inv.intro || '';
   document.getElementById('inv-cantidad').value = inv.cantidad || 1;
+  document.getElementById('inv-slug').value = inv.slug || '';
   document.getElementById('btn-cancelar-inv').style.display = '';
   window.scrollTo(0,0);
 }
 function cancelarInvitado() {
   document.getElementById('inv-edit-id').value = '';
-  ['inv-nombre','inv-email','inv-subtitulo','inv-intro'].forEach(id => document.getElementById(id).value = '');
+  ['inv-nombre','inv-email','inv-subtitulo','inv-intro','inv-slug'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('btn-cancelar-inv').style.display = 'none';
 }
+function generarSlug(nombre) {
+  return nombre.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9\s-]/g,'')
+    .trim().replace(/\s+/g,'-');
+}
+
 async function guardarInvitado() {
   const nombre = document.getElementById('inv-nombre').value.trim();
   if (!nombre) { mostrarToast('El nombre es obligatorio'); return; }
   const editId = document.getElementById('inv-edit-id').value;
+  const slugInput = document.getElementById('inv-slug').value.trim();
+  const slug = slugInput || generarSlug(nombre);
   const data = {
     nombre,
     email: document.getElementById('inv-email').value.trim() || null,
     subtitulo: document.getElementById('inv-subtitulo').value.trim() || null,
     intro: document.getElementById('inv-intro').value.trim() || null,
     cantidad: parseInt(document.getElementById('inv-cantidad').value) || 1,
+    slug,
   };
   if (editId) {
     await supa(`boda_invitados?id=eq.${editId}`, { method:'PATCH', body:JSON.stringify(data) });
@@ -683,7 +703,11 @@ async function eliminarMensaje(id) {
 async function cargarInvitacion(token) {
   const el = document.getElementById('inv-contenido');
   try {
-    const invs = await supa(`boda_invitados?token=eq.${token}&select=*`);
+    // Buscar por slug primero, luego por token
+    let invs = await supa(`boda_invitados?slug=eq.${encodeURIComponent(token)}&select=*`);
+    if (!invs || !invs.length) {
+      invs = await supa(`boda_invitados?token=eq.${token}&select=*`);
+    }
     if (!invs || !invs.length) { mostrarVista('notfound-vista'); return; }
     const inv = invs[0];
     const [eventos, confs, alojArr, timeline, totalConfs, totalInvs] = await Promise.all([
