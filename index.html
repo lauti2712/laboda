@@ -695,11 +695,26 @@ async function eliminarEvento(id) {
 async function cargarConfirmaciones() {
   const el = document.getElementById('tabla-confirmaciones');
   el.innerHTML = '<div class="cargando">Cargando...</div>';
-  const [confs, invs, evs] = await Promise.all([supa('boda_confirmaciones?select=*'), supa('boda_invitados?select=id,nombre,cantidad'), supa('boda_eventos?select=id,nombre&order=orden.asc')]);
-  if (!confs || !confs.length) { el.innerHTML = '<p style="color:var(--ink-dim);font-style:italic;">Sin confirmaciones todavía.</p>'; return; }
-  const iM = Object.fromEntries(invs.map(i=>[i.id,{nombre:i.nombre,cantidad:i.cantidad||1}]));
-  const eM = Object.fromEntries(evs.map(e=>[e.id,e.nombre]));
-  el.innerHTML = `<table class="conf-table"><thead><tr><th>Invitado</th><th>Integrantes</th><th>Evento</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${confs.map(c=>`<tr><td>${iM[c.invitado_id]||'—'}</td><td>${eM[c.evento_id]||'—'}</td><td class="${c.asiste?'asiste-si':'asiste-no'}">${c.asiste?'✦ Asiste':'✗ No asiste'}</td><td style="color:var(--ink-dim);font-size:13px;">${new Date(c.created_at).toLocaleDateString('es-AR')}</td></tr>`).join('')}</tbody></table>`;
+  const [confs, invs, evs] = await Promise.all([
+    supa('boda_confirmaciones?select=*'),
+    supa('boda_invitados?select=id,nombre,cantidad&order=created_at.asc'),
+    supa('boda_eventos?select=id,nombre&order=orden.asc')
+  ]);
+  if (!invs || !invs.length) { el.innerHTML = '<p style="color:var(--ink-dim);font-style:italic;">Sin invitados todavía.</p>'; return; }
+  const confMap = {};
+  (confs||[]).forEach(c => { confMap[c.invitado_id + '_' + c.evento_id] = c; });
+  const evHeaders = (evs||[]).map(e => `<th>${e.nombre}</th>`).join('');
+  const rows = invs.map(inv => {
+    const celdas = (evs||[]).map(ev => {
+      const c = confMap[inv.id + '_' + ev.id];
+      if (!c) return `<td style="color:var(--ink-dimmer);font-size:13px;text-align:center;">—</td>`;
+      if (c.asiste === true)  return `<td class="asiste-si" style="text-align:center;">✦</td>`;
+      if (c.asiste === false) return `<td class="asiste-no" style="text-align:center;">✗</td>`;
+      return `<td style="color:var(--acento);text-align:center;">?</td>`;
+    }).join('');
+    return `<tr><td><strong>${inv.nombre}</strong></td><td style="text-align:center;color:var(--ink-dim);font-size:13px;">${inv.cantidad||1}</td>${celdas}</tr>`;
+  }).join('');
+  el.innerHTML = `<table class="conf-table"><thead><tr><th>Invitado</th><th>Nº</th>${evHeaders}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 // ─── ALOJAMIENTO ADMIN ───
