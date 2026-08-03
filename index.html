@@ -717,7 +717,23 @@ async function cargarConfirmaciones() {
     }).join('');
     return `<tr><td><strong>${inv.nombre}</strong></td><td style="text-align:center;color:var(--ink-dim);font-size:13px;">${inv.cantidad||1}</td>${celdas}</tr>`;
   }).join('');
-  el.innerHTML = `<table class="conf-table"><thead><tr><th>Invitado</th><th>Nº</th>${evHeaders}</tr></thead><tbody>${rows}</tbody></table>`;
+  // Calcular totales por evento
+  const totales = (evs||[]).map(ev => {
+    let total = 0;
+    invs.forEach(inv => {
+      const c = confMap[inv.id + '_' + ev.id];
+      if (c && c.asiste === true) total += (inv.cantidad || 1);
+    });
+    return total;
+  });
+
+  const totalesRow = `<tr style="border-top:2px solid var(--borde);background:rgba(0,0,0,0.2);">
+    <td><strong style="color:var(--gold);font-size:15px;letter-spacing:0.1em;text-transform:uppercase;">Total asistentes</strong></td>
+    <td></td>
+    ${totales.map(t => `<td style="text-align:center;"><strong style="color:var(--gold);font-size:20px;font-family:'IM Fell English',serif;font-style:italic;">${t}</strong></td>`).join('')}
+  </tr>`;
+
+  el.innerHTML = `<table class="conf-table"><thead><tr><th>Invitado</th><th>Nº</th>${evHeaders}</tr></thead><tbody>${rows}${totalesRow}</tbody></table>`;
 }
 
 // ─── ALOJAMIENTO ADMIN ───
@@ -983,7 +999,9 @@ async function guardarAlojamiento(invId) {
 // CONFIRMAR ASISTENCIA
 async function confirmarNS(invId, evId, btn) {
   try {
-    await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste:null }) });
+    await upsertConf(invId, evId, null);
+    // dummy line to keep structure
+    const _x = true;
     const btnAsisto = document.querySelector(`button.btn-asisto[onclick*="${evId}"]`);
     const btnNo = document.getElementById(`btn-no-${evId}`);
     if (btnAsisto) { btnAsisto.classList.remove('confirmado'); btnAsisto.textContent = 'Asisto'; }
@@ -994,14 +1012,26 @@ async function confirmarNS(invId, evId, btn) {
   } catch(e) { mostrarToast('Error al guardar.'); }
 }
 
+async function upsertConf(invId, evId, asiste) {
+  // Intentar UPDATE primero, si no existe hacer INSERT
+  const existing = await supa(`boda_confirmaciones?invitado_id=eq.${invId}&evento_id=eq.${evId}&select=id`);
+  if (existing && existing.length) {
+    await supa(`boda_confirmaciones?invitado_id=eq.${invId}&evento_id=eq.${evId}`, {
+      method:'PATCH', body:JSON.stringify({ asiste })
+    });
+  } else {
+    await supa('boda_confirmaciones', {
+      method:'POST', body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste })
+    });
+  }
+}
+
 async function confirmar(invId, evId, asiste, btn) {
   try {
-    await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste }) });
-    // Resetear todos los botones del evento
-    const btnAsisto = btn;
+    await upsertConf(invId, evId, asiste);
     const btnNo = document.getElementById(`btn-no-${evId}`);
     const btnNs = document.getElementById(`btn-ns-${evId}`);
-    if (btnAsisto) { btnAsisto.classList.add('confirmado'); btnAsisto.textContent = '✦ Confirmado'; }
+    btn.classList.add('confirmado'); btn.textContent = '✦ Confirmado';
     if (btnNo) { btnNo.classList.remove('activo-no'); btnNo.textContent = 'No asisto'; }
     if (btnNs) { btnNs.classList.remove('confirmado-ns'); btnNs.textContent = 'Todavía no sé'; }
     document.getElementById(`status-${evId}`).textContent = '✦ Confirmado — nos vemos ahí';
@@ -1016,7 +1046,7 @@ async function intentarNoAsistir(invId, evId, btn) {
   // Después de 5 intentos, lo deja "marcar" no asisto
   if (n >= 5) {
     try {
-      await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste:false }) });
+      await upsertConf(invId, evId, false);
       btn.classList.add('activo-no'); btn.textContent = '✗ No voy';
       const btnAsisto = document.querySelector(`.btn-asisto[onclick*="${evId}"]`);
       const btnNs = document.getElementById(`btn-ns-${evId}`);
