@@ -72,9 +72,11 @@ body.cargando-inicial { visibility:hidden; }
 .form-card h3 { font-family:'IM Fell English',serif; font-style:italic; color:var(--acento); font-size:16px; margin-bottom:16px; }
 .form-row { margin-bottom:14px; }
 .conf-table { width:100%; border-collapse:collapse; }
-.conf-table th { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--acento); text-align:left; padding:8px 12px; border-bottom:1px solid var(--borde); }
-.conf-table td { padding:10px 12px; border-bottom:1px solid rgba(90,128,80,0.2); font-size:15px; }
+.conf-table th { font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--acento); text-align:left; padding:12px 18px; border-bottom:1px solid var(--borde); }
+.conf-table td { padding:14px 18px; border-bottom:1px solid rgba(90,128,80,0.2); font-size:17px; }
 .conf-table tr:hover td { background:rgba(0,0,0,0.15); }
+.asiste-si { color:#6DB86D; font-size:20px; }
+.asiste-no { color:#ff6b6b; font-size:20px; }
 .asiste-si { color:#6DB86D; }
 .asiste-no { color:#ff6b6b; }
 .color-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px; margin-top:16px; }
@@ -119,7 +121,8 @@ body.cargando-inicial { visibility:hidden; }
 .btn-no-asisto { background:transparent; color:var(--ink-dim); border:1px solid rgba(90,128,80,0.4); padding:11px 28px; font-family:'Cormorant Garamond',serif; font-size:14px; letter-spacing:0.2em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; position:relative; user-select:none; }
 .btn-ns { background:transparent; color:var(--ink-dim); border:1px solid rgba(90,128,80,0.4); padding:11px 28px; font-family:'Cormorant Garamond',serif; font-size:14px; letter-spacing:0.2em; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
 .btn-ns:hover { border-color:var(--acento); color:var(--acento); }
-.confirmado-ns { background:rgba(184,134,11,0.15); color:var(--acento); border-color:var(--acento); cursor:default; }
+.confirmado-ns { background:rgba(184,134,11,0.15); color:var(--acento); border-color:var(--acento); }
+.activo-no { background:rgba(139,26,26,0.2); color:#ff6b6b; border-color:#8B1A1A; }
 .conf-status { font-size:12px; letter-spacing:0.15em; text-transform:uppercase; color:var(--acento); opacity:0.8; margin-left:8px; }
 
 /* ALOJAMIENTO */
@@ -825,11 +828,13 @@ function renderInvitacion(el, inv, eventos, confMap, aloj) {
       ${ev.descripcion ? `<p style="font-size:16px;font-style:italic;color:var(--ink-dim);margin-bottom:14px;">${ev.descripcion}</p>` : ''}
       ${datos ? `<div class="evento-datos">${datos}</div>` : ''}
       <div class="btn-row">
-        <button class="btn-asisto ${yaConfirmo && asiste === true ? 'confirmado' : ''}" onclick="confirmar('${inv.id}','${ev.id}',true,this,'${ev.id}')" ${yaConfirmo && asiste === true ? 'disabled' : ''}>
+        <button class="btn-asisto ${yaConfirmo && asiste === true ? 'confirmado' : ''}" onclick="confirmar('${inv.id}','${ev.id}',true,this,'${ev.id}')">
           ${yaConfirmo && asiste === true ? '✦ Confirmado' : 'Asisto'}
         </button>
-        <button class="btn-no-asisto" id="btn-no-${ev.id}" onclick="intentarNoAsistir('${inv.id}','${ev.id}',this)">No asisto</button>
-        <button class="btn-ns ${yaConfirmo && asiste === null ? 'confirmado-ns' : ''}" id="btn-ns-${ev.id}" onclick="confirmarNS('${inv.id}','${ev.id}',this)" ${yaConfirmo && asiste === null ? 'disabled' : ''}>
+        <button class="btn-no-asisto ${yaConfirmo && asiste === false ? 'activo-no' : ''}" id="btn-no-${ev.id}" onclick="intentarNoAsistir('${inv.id}','${ev.id}',this)">
+          ${yaConfirmo && asiste === false ? '✗ No voy' : 'No asisto'}
+        </button>
+        <button class="btn-ns ${yaConfirmo && asiste === null ? 'confirmado-ns' : ''}" id="btn-ns-${ev.id}" onclick="confirmarNS('${inv.id}','${ev.id}',this)">
           ${yaConfirmo && asiste === null ? '? Pendiente' : 'Todavía no sé'}
         </button>
         ${estadoTexto ? `<span class="conf-status" id="status-${ev.id}">${estadoTexto}</span>` : `<span class="conf-status" id="status-${ev.id}"></span>`}
@@ -979,7 +984,11 @@ async function guardarAlojamiento(invId) {
 async function confirmarNS(invId, evId, btn) {
   try {
     await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste:null }) });
-    btn.textContent = '? Pendiente'; btn.classList.add('confirmado-ns'); btn.disabled = true;
+    const btnAsisto = document.querySelector(`button.btn-asisto[onclick*="${evId}"]`);
+    const btnNo = document.getElementById(`btn-no-${evId}`);
+    if (btnAsisto) { btnAsisto.classList.remove('confirmado'); btnAsisto.textContent = 'Asisto'; }
+    if (btnNo) { btnNo.classList.remove('activo-no'); btnNo.textContent = 'No asisto'; }
+    btn.classList.add('confirmado-ns'); btn.textContent = '? Pendiente';
     document.getElementById(`status-${evId}`).textContent = '? Pendiente de confirmación';
     mostrarToast('Anotado — avisanos cuando sepas ✦');
   } catch(e) { mostrarToast('Error al guardar.'); }
@@ -988,18 +997,37 @@ async function confirmarNS(invId, evId, btn) {
 async function confirmar(invId, evId, asiste, btn) {
   try {
     await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste }) });
-    if (asiste) {
-      btn.textContent = '✦ Confirmado'; btn.classList.add('confirmado'); btn.disabled = true;
-      document.getElementById(`status-${evId}`).textContent = '✦ Confirmado — nos vemos ahí';
-      mostrarToast('¡Confirmado! La secta ya lo sabe ✦'); lanzarConfetti();
-    }
+    // Resetear todos los botones del evento
+    const btnAsisto = btn;
+    const btnNo = document.getElementById(`btn-no-${evId}`);
+    const btnNs = document.getElementById(`btn-ns-${evId}`);
+    if (btnAsisto) { btnAsisto.classList.add('confirmado'); btnAsisto.textContent = '✦ Confirmado'; }
+    if (btnNo) { btnNo.classList.remove('activo-no'); btnNo.textContent = 'No asisto'; }
+    if (btnNs) { btnNs.classList.remove('confirmado-ns'); btnNs.textContent = 'Todavía no sé'; }
+    document.getElementById(`status-${evId}`).textContent = '✦ Confirmado — nos vemos ahí';
+    mostrarToast('¡Confirmado! La secta ya lo sabe ✦'); lanzarConfetti();
   } catch(e) { mostrarToast('Error al confirmar. Intentá de nuevo.'); }
 }
 
 // NO ASISTO
-function intentarNoAsistir(invId, evId, btn) {
+async function intentarNoAsistir(invId, evId, btn) {
   if (!intentosNo[evId]) intentosNo[evId] = 0;
   const n = intentosNo[evId]++;
+  // Después de 5 intentos, lo deja "marcar" no asisto
+  if (n >= 5) {
+    try {
+      await supa('boda_confirmaciones', { method:'POST', headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'}, body:JSON.stringify({ invitado_id:invId, evento_id:evId, asiste:false }) });
+      btn.classList.add('activo-no'); btn.textContent = '✗ No voy';
+      const btnAsisto = document.querySelector(`.btn-asisto[onclick*="${evId}"]`);
+      const btnNs = document.getElementById(`btn-ns-${evId}`);
+      if (btnAsisto) { btnAsisto.classList.remove('confirmado'); btnAsisto.textContent = 'Asisto'; }
+      if (btnNs) { btnNs.classList.remove('confirmado-ns'); btnNs.textContent = 'Todavía no sé'; }
+      document.getElementById(`status-${evId}`).textContent = '✗ La secta tomó nota. Con tristeza.';
+      document.getElementById(`msg-${evId}`).innerHTML = '';
+      mostrarToast('Bueno... la secta lo acepta. Con tristeza.');
+    } catch(e) {}
+    return;
+  }
   const msg = mensajesNo[Math.min(n, mensajesNo.length - 1)];
   document.getElementById(`msg-${evId}`).innerHTML = `<span class="msg-gracioso">${msg}</span>`;
   const x = (Math.random()-0.5)*200;
