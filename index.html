@@ -313,6 +313,8 @@ La secta ha deliberado. Los astros consultados. El resultado es unánime e irren
             <div class="form-row"><label class="campo-label">Dresscode</label><input class="campo-input" id="ev-dresscode" placeholder="Ej: Elegante"></div>
             <div class="form-row"><label class="campo-label">Costo</label><input class="campo-input" id="ev-costo" placeholder="Ej: Sin costo"></div>
             <div class="form-row"><label class="campo-label">Orden</label><input class="campo-input" id="ev-orden" type="number" value="1"></div>
+            <div class="form-row"><label class="campo-label">Horario de inicio</label><input class="campo-input" id="ev-hora-inicio" type="time"></div>
+            <div class="form-row"><label class="campo-label">Horario de fin</label><input class="campo-input" id="ev-hora-fin" type="time"></div>
           </div>
           <div class="form-row"><label class="campo-label">Descripción</label><textarea class="campo-input" id="ev-descripcion" rows="2" placeholder="Descripción breve..."></textarea></div>
           <div style="margin-top:16px;display:flex;gap:12px;">
@@ -663,12 +665,14 @@ function editarEvento(ev) {
   document.getElementById('ev-costo').value = ev.costo||'';
   document.getElementById('ev-orden').value = ev.orden||1;
   document.getElementById('ev-descripcion').value = ev.descripcion||'';
+  document.getElementById('ev-hora-inicio').value = ev.hora_inicio||'';
+  document.getElementById('ev-hora-fin').value = ev.hora_fin||'';
   document.getElementById('btn-cancelar-ev').style.display = '';
   window.scrollTo(0,0);
 }
 function cancelarEvento() {
   document.getElementById('ev-edit-id').value = '';
-  ['ev-nombre','ev-fecha','ev-lugar','ev-dresscode','ev-costo','ev-descripcion'].forEach(id => document.getElementById(id).value='');
+  ['ev-nombre','ev-fecha','ev-lugar','ev-dresscode','ev-costo','ev-descripcion','ev-hora-inicio','ev-hora-fin'].forEach(id => document.getElementById(id).value='');
   document.getElementById('ev-orden').value = '1';
   document.getElementById('btn-cancelar-ev').style.display = 'none';
 }
@@ -676,7 +680,7 @@ async function guardarEvento() {
   const nombre = document.getElementById('ev-nombre').value.trim();
   if (!nombre) { mostrarToast('El nombre es obligatorio'); return; }
   const editId = document.getElementById('ev-edit-id').value;
-  const data = { nombre, fecha:document.getElementById('ev-fecha').value.trim()||null, lugar:document.getElementById('ev-lugar').value.trim()||null, dresscode:document.getElementById('ev-dresscode').value.trim()||null, costo:document.getElementById('ev-costo').value.trim()||null, orden:parseInt(document.getElementById('ev-orden').value)||1, descripcion:document.getElementById('ev-descripcion').value.trim()||null };
+  const data = { nombre, fecha:document.getElementById('ev-fecha').value.trim()||null, lugar:document.getElementById('ev-lugar').value.trim()||null, dresscode:document.getElementById('ev-dresscode').value.trim()||null, costo:document.getElementById('ev-costo').value.trim()||null, orden:parseInt(document.getElementById('ev-orden').value)||1, descripcion:document.getElementById('ev-descripcion').value.trim()||null, hora_inicio:document.getElementById('ev-hora-inicio').value||null, hora_fin:document.getElementById('ev-hora-fin').value||null };
   if (editId) { await supa(`boda_eventos?id=eq.${editId}`, { method:'PATCH', body:JSON.stringify(data) }); mostrarToast('Evento actualizado ✦'); }
   else { await supa('boda_eventos', { method:'POST', body:JSON.stringify(data) }); mostrarToast(`${nombre} creado ✦`); }
   cancelarEvento(); cargarListaEventos();
@@ -795,6 +799,7 @@ function renderInvitacion(el, inv, eventos, confMap, aloj) {
     const asiste = conf?.asiste;
     const datos = [
       ev.fecha ? `<div><span class="evento-dato-label">Fecha</span><span class="evento-dato-valor">${ev.fecha}</span></div>` : '',
+      (ev.hora_inicio || ev.hora_fin) ? `<div><span class="evento-dato-label">Horario</span><span class="evento-dato-valor">${ev.hora_inicio ? ev.hora_inicio : ''}${ev.hora_inicio && ev.hora_fin ? ' — ' : ''}${ev.hora_fin ? ev.hora_fin : ''}</span></div>` : '',
       ev.lugar ? `<div><span class="evento-dato-label">Lugar</span><span class="evento-dato-valor">${ev.lugar}</span></div>` : '',
       ev.dresscode ? `<div><span class="evento-dato-label">Dresscode</span><span class="evento-dato-valor">${ev.dresscode}</span></div>` : '',
       ev.costo ? `<div><span class="evento-dato-label">Costo</span><span class="evento-dato-valor">${ev.costo}</span></div>` : '',
