@@ -165,6 +165,45 @@ body.cargando-inicial { visibility:hidden; }
   .firma-seccion{flex-direction:column;align-items:center;gap:20px;}
   .admin-nav{padding:12px 16px;}
 }
+
+/* CONTADOR */
+.contador-wrap { text-align:center; padding:28px 20px 20px; position:relative; z-index:1; }
+.contador-grid { display:inline-grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:12px; border:1px solid var(--borde); }
+.contador-item { text-align:center; padding:18px 28px 14px; position:relative; }
+.contador-item:not(:last-child)::after { content:''; position:absolute; right:0; top:20%; height:60%; width:1px; background:var(--borde); }
+.contador-num { font-family:'IM Fell English',serif; font-size:56px; color:var(--gold); line-height:1; display:block; letter-spacing:-0.02em; }
+.contador-label { font-size:8px; letter-spacing:0.3em; text-transform:uppercase; color:var(--acento); opacity:0.65; margin-top:6px; display:block; }
+@media(max-width:500px){ .contador-num{font-size:36px;} .contador-item{padding:14px 12px 10px;} }
+
+/* PROGRESO */
+.progreso-wrap { text-align:center; margin:32px 0 12px; padding:24px 28px; background:rgba(0,0,0,0.2); border:1px solid var(--borde); position:relative; }
+.progreso-wrap::before, .progreso-wrap::after { content:'✦'; position:absolute; color:var(--borde); font-size:10px; top:-7px; background:var(--carta); padding:0 6px; }
+.progreso-wrap::before { left:20px; }
+.progreso-wrap::after { right:20px; }
+.progreso-texto { font-size:9px; letter-spacing:0.3em; text-transform:uppercase; color:var(--acento); margin-bottom:14px; opacity:0.85; display:block; }
+.progreso-barra-outer { background:rgba(0,0,0,0.3); border:1px solid var(--borde); height:4px; overflow:hidden; max-width:360px; margin:0 auto 12px; }
+.progreso-barra-inner { background:var(--gold); height:100%; transition:width 1.2s ease; }
+.progreso-num { font-family:'IM Fell English',serif; font-style:italic; font-size:22px; color:var(--gold); display:block; }
+
+/* TIMELINE */
+.timeline-section { margin:36px 0 28px; }
+.timeline-titulo { font-family:'IM Fell English',serif; font-style:italic; font-size:24px; color:var(--gold); text-align:center; margin-bottom:32px; }
+.timeline-wrap { position:relative; max-width:580px; margin:0 auto; padding-left:52px; }
+.timeline-wrap::before { content:''; position:absolute; left:18px; top:8px; bottom:8px; width:1px; background:linear-gradient(to bottom, transparent, var(--borde) 8%, var(--borde) 92%, transparent); }
+.timeline-item { position:relative; margin-bottom:32px; opacity:0; transform:translateY(20px); transition:opacity 0.6s ease, transform 0.6s ease; }
+.timeline-item.visible { opacity:1; transform:translateY(0); }
+.timeline-emoji { position:absolute; left:-52px; top:0; width:36px; height:36px; background:var(--carta); border:1px solid var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 0 0 4px var(--carta); }
+.timeline-fecha { font-size:9px; letter-spacing:0.3em; text-transform:uppercase; color:var(--acento); margin-bottom:4px; opacity:0.8; display:block; }
+.timeline-nombre { font-family:'IM Fell English',serif; font-style:italic; font-size:21px; color:var(--gold); margin-bottom:6px; display:block; line-height:1.2; }
+.timeline-desc { font-size:15px; color:var(--ink-dim); line-height:1.65; font-style:italic; }
+
+/* CONFETTI */
+.confetti-piece { position:fixed; width:10px; height:10px; top:-20px; z-index:9998; border-radius:2px; animation:confettiFall linear forwards; pointer-events:none; }
+@keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+/* FOTO */
+.foto-reveal { opacity:0; animation:fotoFade 1.2s ease 0.4s forwards; }
+@keyframes fotoFade { from{opacity:0;transform:scale(1.02)} to{opacity:1;transform:scale(1)} }
 </style>
 </head>
 <body class="cargando-inicial">
@@ -195,7 +234,7 @@ body.cargando-inicial { visibility:hidden; }
     <button class="tab-btn" onclick="tabAdmin('invitados')" id="tab-invitados">Invitados</button>
     <button class="tab-btn" onclick="tabAdmin('eventos')" id="tab-eventos">Eventos</button>
     <button class="tab-btn" onclick="tabAdmin('confirmaciones')" id="tab-confirmaciones">Confirmaciones</button>
-    <button class="tab-btn" onclick="tabAdmin('alojamiento')" id="tab-alojamiento">Alojamiento</button>
+    
     <button class="tab-btn" onclick="tabAdmin('mensajes')" id="tab-mensajes">Mensajes</button>
     <button class="tab-btn" onclick="tabAdmin('timeline')" id="tab-timeline">Timeline</button>
     <button class="tab-btn" onclick="tabAdmin('diseno')" id="tab-diseno">Diseño</button>
@@ -861,7 +900,7 @@ function renderInvitacion(el, inv, eventos, confMap, aloj) {
     <div class="inv-body">${introHTML}</div>
     <div class="eyebrow" style="text-align:center;margin-bottom:20px;">Los eventos — confirmá tu asistencia</div>
     ${eventosHTML}
-    ${alojHTML}
+    
     <div class="progreso-wrap" id="progreso-wrap" style="display:none">
       <div class="progreso-texto">La secta que ya confirmó</div>
       <div class="progreso-barra-outer"><div class="progreso-barra-inner" id="progreso-barra" style="width:0%"></div></div>
